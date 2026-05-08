@@ -1,6 +1,5 @@
 const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
-
 let tempoEspera;
 
 campoBusca.addEventListener('input', function(e) {
@@ -21,18 +20,22 @@ campoBusca.addEventListener('input', function(e) {
 
 async function buscarNoMercadoLivre(query) {
     try {
-        // Proteção 1: Encode garante que espaços (ex: Samsung S23) não quebrem o link
-        const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=12`;
-        const resposta = await fetch(url);
+        // Criando a URL da API do ML
+        const urlML = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=12`;
         
-        // Verifica se o Mercado Livre recusou a conexão
+        // Usando a "Ponte" (Proxy) para driblar o bloqueio 403 de segurança do Mercado Livre
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlML)}`;
+        
+        const resposta = await fetch(proxyUrl);
+        
         if (!resposta.ok) {
-            throw new Error(`Servidor respondeu com erro ${resposta.status}`);
+            throw new Error(`Falha na ponte de conexão (Erro ${resposta.status})`);
         }
 
-        const dados = await resposta.json();
+        // O Proxy devolve os dados empacotados, precisamos desempacotar (JSON.parse)
+        const dadosProxy = await resposta.json();
+        const dados = JSON.parse(dadosProxy.contents);
 
-        // Verifica se a lista veio vazia
         if (!dados.results || dados.results.length === 0) {
             container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #666;">Nenhuma oferta encontrada para esta busca. 😕</p>';
             return;
@@ -41,13 +44,13 @@ async function buscarNoMercadoLivre(query) {
         container.innerHTML = ''; 
 
         dados.results.forEach(produto => {
-            // Proteção 2: Se o produto não tiver preço definido
             const precoFormatado = produto.price 
                 ? produto.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
                 : 'Preço Indisponível';
             
-            // Proteção 3: Se o produto vier sem foto, não deixa quebrar, usa a imagem original
-            const imagem = produto.thumbnail || 'https://via.placeholder.com/200?text=Sem+Foto';
+            // Tratamento de imagem para puxar em alta resolução (tira o -I e bota -O)
+            let imagem = produto.thumbnail || 'https://via.placeholder.com/200?text=Sem+Foto';
+            imagem = imagem.replace('-I.jpg', '-O.jpg');
 
             const cardHTML = `
                 <div class="card-oferta">
@@ -64,7 +67,6 @@ async function buscarNoMercadoLivre(query) {
         });
 
     } catch (erro) {
-        // Agora ele vai mostrar na tela o motivo REAL do erro para investigarmos
         container.innerHTML = `<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: red;"><b>Erro detalhado:</b> ${erro.message}</p>`;
     }
 }
