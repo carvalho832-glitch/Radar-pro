@@ -1,82 +1,79 @@
-// Dados simulados para o Radar Pro
-const ofertas = [
-    { 
-        loja: "Amazon", 
-        badgeClass: "badge-amazon", 
-        titulo: "Echo Dot 5ª Geração com Alexa", 
-        imagem: "https://images.unsplash.com/photo-1543512214-318c7553f230?auto=format&fit=crop&w=500&q=80", 
-        precoAtual: "R$ 284,05",
-        link: "https://www.amazon.com.br" 
-    },
-    { 
-        loja: "Shopee", 
-        badgeClass: "badge-shopee", 
-        titulo: "Miniatura Hot Wheels BMW 2002", 
-        imagem: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=500&q=80", 
-        precoAtual: "R$ 19,90",
-        link: "https://shopee.com.br"
-    },
-    { 
-        loja: "M. Livre", 
-        badgeClass: "badge-meli", 
-        titulo: "Red Dead Redemption 2 - Xbox One", 
-        imagem: "https://images.unsplash.com/photo-1593118247619-e2d6f056869e?auto=format&fit=crop&w=500&q=80", 
-        precoAtual: "R$ 89,90",
-        link: "https://www.mercadolivre.com.br"
-    }
-];
+// Removemos os dados estáticos. Agora é tudo ao vivo!
 
-let filtrosAtivos = [];
+const container = document.getElementById('lista-ofertas');
+const campoBusca = document.getElementById('campo-busca');
 
-function carregarOfertas() {
-    const container = document.getElementById('lista-ofertas');
-    const textoBusca = document.getElementById('campo-busca').value.toLowerCase();
+// Variável para controlar o tempo de digitação (Debounce)
+let tempoEspera;
+
+// Escuta o que você digita na barra
+campoBusca.addEventListener('input', function(e) {
+    // Cancela a busca anterior se você ainda estiver digitando
+    clearTimeout(tempoEspera);
     
-    container.innerHTML = '';
+    const textoBusca = e.target.value.trim();
 
-    const filtradas = ofertas.filter(o => {
-        const bateTexto = o.titulo.toLowerCase().includes(textoBusca);
-        const bateFiltro = filtrosAtivos.length === 0 || filtrosAtivos.includes(o.loja);
-        return bateTexto && bateFiltro;
-    });
-
-    if (filtradas.length === 0) {
-        container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px;">Nenhuma oferta encontrada.</p>';
+    if (textoBusca.length < 3) {
+        container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #666;">Digite pelo menos 3 letras para iniciar o Radar... 📡</p>';
         return;
     }
 
-    filtradas.forEach(o => {
-        container.innerHTML += `
-            <div class="card-oferta">
-                <span class="badge ${o.badgeClass}">${o.loja}</span>
-                <img src="${o.imagem}" class="foto-produto">
-                <div class="detalhes">
-                    <h3 class="titulo-produto">${o.titulo}</h3>
-                    <p class="preco-atual">${o.precoAtual}</p>
-                    <a href="${o.link}" target="_blank" class="botao-ir">Acessar Oferta</a>
-                </div>
-            </div>`;
-    });
-}
+    container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; font-weight: bold; color: #2563eb;">Buscando as melhores ofertas no Mercado Livre... ⏳</p>';
 
-// Configuração dos balõezinhos de filtro
-document.querySelectorAll('.filtro-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const loja = btn.getAttribute('data-loja');
-        
-        if (filtrosAtivos.includes(loja)) {
-            filtrosAtivos = filtrosAtivos.filter(f => f !== loja);
-            btn.classList.remove('ativo');
-        } else {
-            filtrosAtivos.push(loja);
-            btn.classList.add('ativo');
-        }
-        carregarOfertas();
-    });
+    // Espera 800 milissegundos após você parar de digitar para buscar na API
+    tempoEspera = setTimeout(() => {
+        buscarNoMercadoLivre(textoBusca);
+    }, 800);
 });
 
-// Escuta a barra de busca
-document.getElementById('campo-busca').addEventListener('input', carregarOfertas);
+// A função mágica que conecta com os servidores do Mercado Livre
+async function buscarNoMercadoLivre(query) {
+    try {
+        // Chama a API pública do ML (MLB = Mercado Livre Brasil)
+        const resposta = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${query}&limit=12`);
+        const dados = await resposta.json();
 
-// Inicializa a tela
-carregarOfertas();
+        if (dados.results.length === 0) {
+            container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #666;">Nenhuma oferta encontrada para esta busca. 😕</p>';
+            return;
+        }
+
+        container.innerHTML = ''; // Limpa a mensagem de carregamento
+
+        // Para cada produto encontrado, cria um Card
+        dados.results.forEach(produto => {
+            // Formata o preço para o padrão Brasileiro (R$)
+            const precoFormatado = produto.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            
+            // O ML manda uma foto pequena (thumbnail). Esse truque troca o final do link para pegar a foto em Alta Resolução
+            const imagemAltaRes = produto.thumbnail.replace('-I.jpg', '-O.jpg');
+
+            const cardHTML = `
+                <div class="card-oferta">
+                    <span class="badge badge-meli">M. Livre</span>
+                    <img src="${imagemAltaRes}" alt="${produto.title}" class="foto-produto">
+                    <div class="detalhes">
+                        <h3 class="titulo-produto">${produto.title}</h3>
+                        <p class="preco-atual">${precoFormatado}</p>
+                        <a href="${produto.permalink}" target="_blank" class="botao-ir">Acessar Oferta</a>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHTML;
+        });
+
+    } catch (erro) {
+        container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: red;">Erro ao conectar com a loja. Tente novamente.</p>';
+        console.error("Erro no Radar Pro:", erro);
+    }
+}
+
+// Quando o app abre, mostra uma mensagem de boas-vindas
+container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #666; font-size: 1.1rem;">Digite o que você procura acima para ativar o Radar! 🚀<br><br><small>Buscando diretamente nos servidores do Mercado Livre.</small></p>';
+
+// Botões de filtro (Apenas visual por enquanto, até configurarmos Amazon e Shopee)
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        btn.classList.toggle('ativo');
+    });
+});
