@@ -7,6 +7,7 @@ const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
 let tempoEspera;
 
+// Limpeza de segurança
 if (localStorage.getItem('ml_access_token') === 'undefined' || localStorage.getItem('ml_access_token') === 'null') {
     localStorage.clear();
 }
@@ -118,44 +119,65 @@ campoBusca.addEventListener('input', (e) => {
     }, 800);
 });
 
+// MOTOR DE BUSCA TURBINADO
 async function executarBusca(query, token) {
     try {
-        const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=12`;
+        const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=15`;
         const res = await fetch(PROXY + url, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         });
         
         const dados = await res.json();
         
         if (res.status === 401 || dados.message === 'invalid_token') {
             localStorage.clear();
-            autorizarNovamente("Token expirado. Por favor, clique em Ligar Radar Pro novamente.");
+            autorizarNovamente("Token expirado. Por favor, autorize novamente.");
             return;
         }
 
+        // Verifica se deu erro na API
+        if (dados.error) {
+            container.innerHTML = `<p style="text-align:center; padding:50px; color:red;"><b>Erro na busca:</b> ${dados.message}</p>`;
+            return;
+        }
+
+        // Verifica se a lista veio vazia
         if (!dados.results || dados.results.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:50px; color:#666;">Nenhum produto encontrado. 😕</p>';
+            container.innerHTML = `
+                <div style="text-align:center; padding:50px; color:#666;">
+                    <p>Nenhuma oferta encontrada para "<b>${query}</b>". 😕</p>
+                    <p style="font-size:0.8rem; margin-top:10px;">Tente pesquisar algo mais genérico, como "Celular" ou "Fralda".</p>
+                </div>`;
             return;
         }
 
-        container.innerHTML = '';
+        container.innerHTML = ''; // Limpa a mensagem de carregando
+        
         dados.results.forEach(item => {
             const preco = item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            // Troca a miniatura por uma imagem maior (J.jpg ou O.jpg)
+            let foto = item.thumbnail.replace('-I.jpg', '-J.jpg'); 
+
             container.innerHTML += `
-                <div class="card-oferta" style="position:relative;">
-                    <span class="badge-meli" style="background:#ffe600; color:black; padding:2px 6px; font-size:0.7rem; font-weight:bold; border-radius:4px; position:absolute; top:10px; left:10px;">M. Livre</span>
-                    <img src="${item.thumbnail.replace('-I.jpg', '-O.jpg')}" class="foto-produto" style="width:100%; border-radius:8px;">
-                    <div class="detalhes" style="margin-top:10px;">
-                        <h3 style="font-size:0.9rem; margin-bottom:5px; color:#333;">${item.title}</h3>
-                        <p style="color:#059669; font-weight:bold; font-size:1.2rem;">${preco}</p>
-                        <a href="${item.permalink}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:white; padding:8px; border-radius:5px; text-decoration:none; margin-top:10px; font-weight:bold;">Ver Oferta</a>
+                <div class="card-oferta" style="position:relative; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 15px; background: white;">
+                    <span style="background:#ffe600; color:black; padding:3px 8px; font-size:0.75rem; font-weight:bold; border-radius:4px; position:absolute; top:10px; left:10px; z-index:1;">M. Livre</span>
+                    <img src="${foto}" style="width:100%; height:180px; object-fit:contain; border-radius:5px; margin-bottom:10px;">
+                    <div class="detalhes">
+                        <h3 style="font-size:0.95rem; color:#333; height:40px; overflow:hidden; margin-bottom:5px;">${item.title}</h3>
+                        <p style="color:#059669; font-weight:bold; font-size:1.3rem; margin-bottom:10px;">${preco}</p>
+                        <a href="${item.permalink}" target="_blank" style="display:block; text-align:center; background:#2563eb; color:white; padding:10px; border-radius:6px; text-decoration:none; font-weight:bold;">Ver Oferta</a>
                     </div>
                 </div>`;
         });
     } catch (e) {
         container.innerHTML = `<div style="text-align:center; padding:50px; color:red;">
             <b>Atenção:</b> A ponte de conexão fechou.<br>
-            <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="display:inline-block; margin-top:15px; padding:10px; background:#dc2626; color:white; border-radius:5px; text-decoration:none;">Clique aqui para liberar acesso (CORS)</a>
+            <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">O Mercado Livre bloqueou a conexão. Precisamos abrir a ponte (CORS) novamente.</p>
+            <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="display:inline-block; margin-top:15px; padding:12px; background:#dc2626; color:white; border-radius:5px; text-decoration:none; font-weight:bold;">Liberar Acesso (CORS)</a>
         </div>`;
     }
 }
