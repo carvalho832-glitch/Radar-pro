@@ -7,7 +7,6 @@ const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
 let tempoEspera;
 
-// Limpeza de emergência: se o token estiver bugado, ele limpa a memória sozinho
 if (localStorage.getItem('ml_access_token') === 'undefined') {
     localStorage.clear();
 }
@@ -21,12 +20,16 @@ function guardarTokens(dados) {
     }
 }
 
+// MOTOR CORRIGIDO: Falando direto com o ML sem proxy
 async function trocarCodigoInicial(code) {
     container.innerHTML = '<h2 style="text-align:center; padding: 50px;">A ligar motores... 🚀</h2>';
     try {
-        const res = await fetch(PROXY + 'https://api.mercadolibre.com/oauth/token', {
+        const res = await fetch('https://api.mercadolibre.com/oauth/token', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: { 
+                'accept': 'application/json',
+                'content-type': 'application/x-www-form-urlencoded' 
+            },
             body: new URLSearchParams({
                 'grant_type': 'authorization_code',
                 'client_id': CLIENT_ID,
@@ -43,10 +46,12 @@ async function trocarCodigoInicial(code) {
             location.reload(); 
         } else {
             localStorage.clear();
-            autorizarNovamente(`Código expirado. Motivo: ${dados.message}`);
+            // Agora ele mostra o erro EXATO do Mercado Livre
+            const erroReal = dados.error_description || dados.message || JSON.stringify(dados);
+            autorizarNovamente(`Falha na API: ${erroReal}`);
         }
     } catch (e) { 
-        autorizarNovamente("Erro ao conectar no ML."); 
+        autorizarNovamente(`Erro de conexão local: ${e.message}`); 
     }
 }
 
@@ -58,9 +63,13 @@ async function renovarTokenAutomatico() {
     }
 
     try {
-        const res = await fetch(PROXY + 'https://api.mercadolibre.com/oauth/token', {
+        // Sem proxy aqui também
+        const res = await fetch('https://api.mercadolibre.com/oauth/token', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: { 
+                'accept': 'application/json',
+                'content-type': 'application/x-www-form-urlencoded' 
+            },
             body: new URLSearchParams({
                 'grant_type': 'refresh_token',
                 'client_id': CLIENT_ID,
@@ -84,7 +93,7 @@ async function renovarTokenAutomatico() {
 function autorizarNovamente(mensagemErro = "") {
     container.innerHTML = `
         <div style="text-align:center; padding:50px;">
-            <p style="color: red; font-weight: bold;">${mensagemErro}</p>
+            <p style="color: red; font-weight: bold; margin-bottom: 15px;">${mensagemErro}</p>
             <p>Precisamos de uma autorização para começar.</p>
             <a href="https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}" 
                style="display:inline-block; margin-top:20px; background:#ffe600; padding:15px 30px; border-radius:8px; text-decoration:none; color:black; font-weight:bold;">
@@ -112,6 +121,7 @@ campoBusca.addEventListener('input', (e) => {
     }, 800);
 });
 
+// A busca de produtos AINDA precisa do Proxy
 async function executarBusca(query, token) {
     try {
         const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=12`;
@@ -121,7 +131,6 @@ async function executarBusca(query, token) {
         
         const dados = await res.json();
         
-        // Se o token for inválido, limpa tudo e pede auth de novo
         if (res.status === 401 || dados.message === 'invalid_token') {
             localStorage.clear();
             autorizarNovamente("Token expirado. Por favor, autorize novamente.");
@@ -149,7 +158,6 @@ async function executarBusca(query, token) {
     } catch (e) {
         container.innerHTML = `<div style="text-align:center; padding:50px; color:red;">
             <b>Erro Real de Conexão:</b><br>${e.message}
-            <br><br>Se for erro de CORS, clique no botão da Ponte Herokuapp.
         </div>`;
     }
 }
