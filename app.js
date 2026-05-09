@@ -1,5 +1,5 @@
 const CLIENT_ID = '6732948243450624';
-const CLIENT_SECRET = 'PCpL3bQs9wONBknKcLkelwUTmrlh7blv'; 
+const CLIENT_SECRET = 'PCpL3bQs9wONBknKcLkelwUTmrIh7bIv'; 
 const REDIRECT_URI = 'https://carvalho832-glitch.github.io/Radar-pro/';
 const PROXY = 'https://cors-anywhere.herokuapp.com/';
 
@@ -174,4 +174,3 @@ if (code) {
             <p style="font-size: 0.8rem; color: #999; margin-top: 20px; cursor: pointer; text-decoration:underline;" onclick="localStorage.clear(); location.reload();">Desconectar / Resetar</p>
         </div>`;
 }
-
