@@ -1,13 +1,12 @@
 const CLIENT_ID = '6732948243450624';
 const CLIENT_SECRET = 'PCpL3bQs9wONBknKcLkelwUTmrIh7bIv'; 
 const REDIRECT_URI = 'https://carvalho832-glitch.github.io/Radar-pro/';
-const PROXY = 'https://cors-anywhere.herokuapp.com/';
 
 const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
 let tempoEspera;
 
-// Limpeza de segurança
+// 1. Limpeza de segurança da memória
 if (localStorage.getItem('ml_access_token') === 'undefined' || localStorage.getItem('ml_access_token') === 'null') {
     localStorage.clear();
 }
@@ -21,6 +20,7 @@ function guardarTokens(dados) {
     }
 }
 
+// 2. Troca do Código pelo Token (Sem Proxy, 100% Direto)
 async function trocarCodigoInicial(code) {
     container.innerHTML = '<h2 style="text-align:center; padding: 50px;">A ligar motores... 🚀</h2>';
     try {
@@ -50,10 +50,11 @@ async function trocarCodigoInicial(code) {
             autorizarNovamente(`Falha na Senha/ID: ${erroReal}`);
         }
     } catch (e) { 
-        autorizarNovamente(`Erro de conexão local: ${e.message}`); 
+        autorizarNovamente(`Erro de conexão: ${e.message}`); 
     }
 }
 
+// 3. Renovação Automática e Silenciosa
 async function renovarTokenAutomatico() {
     const refreshToken = localStorage.getItem('ml_refresh_token');
     if (!refreshToken || refreshToken === 'undefined') {
@@ -88,6 +89,7 @@ async function renovarTokenAutomatico() {
     }
 }
 
+// 4. Tela do Botão Amarelo
 function autorizarNovamente(mensagemErro = "") {
     container.innerHTML = `
         <div style="text-align:center; padding:50px;">
@@ -100,6 +102,7 @@ function autorizarNovamente(mensagemErro = "") {
         </div>`;
 }
 
+// 5. O Ouvinte da Barra de Pesquisa
 campoBusca.addEventListener('input', (e) => {
     clearTimeout(tempoEspera);
     const busca = e.target.value.trim();
@@ -119,15 +122,15 @@ campoBusca.addEventListener('input', (e) => {
     }, 800);
 });
 
-// MOTOR DE BUSCA TURBINADO
+// 6. O Motor de Busca Principal
 async function executarBusca(query, token) {
     try {
         const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=15`;
-        const res = await fetch(PROXY + url, {
+        
+        const res = await fetch(url, {
             method: 'GET',
             headers: { 
-                'Authorization': `Bearer ${token}`,
-                'X-Requested-With': 'XMLHttpRequest'
+                'Authorization': `Bearer ${token}`
             }
         });
         
@@ -139,13 +142,11 @@ async function executarBusca(query, token) {
             return;
         }
 
-        // Verifica se deu erro na API
-        if (dados.error) {
-            container.innerHTML = `<p style="text-align:center; padding:50px; color:red;"><b>Erro na busca:</b> ${dados.message}</p>`;
+        if (dados.error || res.status !== 200) {
+            container.innerHTML = `<p style="text-align:center; padding:50px; color:red;"><b>Erro na busca:</b> ${dados.message || dados.error}</p>`;
             return;
         }
 
-        // Verifica se a lista veio vazia
         if (!dados.results || dados.results.length === 0) {
             container.innerHTML = `
                 <div style="text-align:center; padding:50px; color:#666;">
@@ -155,11 +156,10 @@ async function executarBusca(query, token) {
             return;
         }
 
-        container.innerHTML = ''; // Limpa a mensagem de carregando
+        container.innerHTML = ''; 
         
         dados.results.forEach(item => {
             const preco = item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            // Troca a miniatura por uma imagem maior (J.jpg ou O.jpg)
             let foto = item.thumbnail.replace('-I.jpg', '-J.jpg'); 
 
             container.innerHTML += `
@@ -175,13 +175,12 @@ async function executarBusca(query, token) {
         });
     } catch (e) {
         container.innerHTML = `<div style="text-align:center; padding:50px; color:red;">
-            <b>Atenção:</b> A ponte de conexão fechou.<br>
-            <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">O Mercado Livre bloqueou a conexão. Precisamos abrir a ponte (CORS) novamente.</p>
-            <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="display:inline-block; margin-top:15px; padding:12px; background:#dc2626; color:white; border-radius:5px; text-decoration:none; font-weight:bold;">Liberar Acesso (CORS)</a>
+            <b>Erro de Rede:</b> Seu navegador bloqueou a conexão.<br>Detalhe: ${e.message}
         </div>`;
     }
 }
 
+// 7. O Ponto de Partida
 const urlParams = new URLSearchParams(window.location.search);
 const code = urlParams.get('code');
 
