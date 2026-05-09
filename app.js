@@ -2,7 +2,7 @@ const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
 let tempoEspera;
 
-// ✅ SEU MOTOR TURBO ESTÁ LIGADO!
+// Seu Token oficial
 const MEU_TOKEN_ML = 'APP_USR-6732948243450624-050823-74760a9f8f4a147bdcc152764760-152764760'; 
 
 campoBusca.addEventListener('input', function(e) {
@@ -23,16 +23,22 @@ campoBusca.addEventListener('input', function(e) {
 
 async function buscarNoMercadoLivre(query) {
     try {
-        // Buscando no site do Brasil (MLB) com o seu acesso VIP
-        const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=15`;
+        // Adicionamos o Proxy antes da URL da API para evitar o bloqueio de segurança (CORS)
+        const proxy = 'https://cors-anywhere.herokuapp.com/';
+        const urlAPI = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=15`;
         
-        const resposta = await fetch(url, {
+        const resposta = await fetch(proxy + urlAPI, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${MEU_TOKEN_ML}`
+                'Authorization': `Bearer ${MEU_TOKEN_ML}`,
+                'X-Requested-With': 'XMLHttpRequest'
             }
         });
         
+        if (resposta.status === 403) {
+            throw new Error("Acesse https://cors-anywhere.herokuapp.com/corsdemo e clique no botão para liberar o acesso temporário.");
+        }
+
         if (!resposta.ok) {
             throw new Error(`Erro na conexão: ${resposta.status}`);
         }
@@ -48,8 +54,6 @@ async function buscarNoMercadoLivre(query) {
 
         dados.results.forEach(item => {
             const preco = item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            
-            // Melhorando a qualidade da imagem (trocando thumbnail por imagem maior)
             let foto = item.thumbnail.replace('-I.jpg', '-O.jpg');
 
             const cardHTML = `
@@ -67,9 +71,6 @@ async function buscarNoMercadoLivre(query) {
         });
 
     } catch (erro) {
-        container.innerHTML = `<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #dc2626;"><b>Erro no Radar:</b> ${erro.message}</p>`;
+        container.innerHTML = `<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #dc2626; font-size: 0.9rem;"><b>Erro no Radar:</b><br>${erro.message}</p>`;
     }
 }
-
-// Mensagem de boas-vindas
-container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 50px; color: #666; font-size: 1.1rem;">Radar Pro Ativo! Digite um produto acima para começar. 🚀</p>';
