@@ -1,6 +1,5 @@
 const CLIENT_ID = '6732948243450624';
-// 🚨 APAGUE O TEXTO ABAIXO E COLE A SUA CHAVE SECRETA ENTRE AS ASPAS:
-const CLIENT_SECRET = 'COLE_SUA_CHAVE_SECRETA_AQUI'; 
+const CLIENT_SECRET = 'PCpL3bQs9wONBknKcLkelwUTmrlh7blv'; 
 const REDIRECT_URI = 'https://carvalho832-glitch.github.io/Radar-pro/';
 const PROXY = 'https://cors-anywhere.herokuapp.com/';
 
@@ -8,7 +7,6 @@ const container = document.getElementById('lista-ofertas');
 const campoBusca = document.getElementById('campo-busca');
 let tempoEspera;
 
-// Limpeza de segurança caso a memória do celular esteja suja
 if (localStorage.getItem('ml_access_token') === 'undefined' || localStorage.getItem('ml_access_token') === 'null') {
     localStorage.clear();
 }
@@ -22,7 +20,6 @@ function guardarTokens(dados) {
     }
 }
 
-// MOTOR DE GERAÇÃO: Direto com o Mercado Livre (Sem proxy para não dar erro)
 async function trocarCodigoInicial(code) {
     container.innerHTML = '<h2 style="text-align:center; padding: 50px;">A ligar motores... 🚀</h2>';
     try {
@@ -34,10 +31,10 @@ async function trocarCodigoInicial(code) {
             },
             body: new URLSearchParams({
                 'grant_type': 'authorization_code',
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET,
-                'code': code,
-                'redirect_uri': REDIRECT_URI
+                'client_id': CLIENT_ID.trim(),
+                'client_secret': CLIENT_SECRET.trim(),
+                'code': code.trim(),
+                'redirect_uri': REDIRECT_URI.trim()
             })
         });
         const dados = await res.json();
@@ -72,9 +69,9 @@ async function renovarTokenAutomatico() {
             },
             body: new URLSearchParams({
                 'grant_type': 'refresh_token',
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET,
-                'refresh_token': refreshToken
+                'client_id': CLIENT_ID.trim(),
+                'client_secret': CLIENT_SECRET.trim(),
+                'refresh_token': refreshToken.trim()
             })
         });
         const dados = await res.json();
@@ -95,7 +92,7 @@ function autorizarNovamente(mensagemErro = "") {
         <div style="text-align:center; padding:50px;">
             <p style="color: red; font-weight: bold; margin-bottom: 15px;">${mensagemErro}</p>
             <p style="color: #333;">Precisamos de uma autorização para começar.</p>
-            <a href="https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}" 
+            <a href="https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${CLIENT_ID.trim()}&redirect_uri=${REDIRECT_URI.trim()}" 
                style="display:inline-block; margin-top:20px; background:#ffe600; padding:15px 30px; border-radius:8px; text-decoration:none; color:black; font-weight:bold;">
                LIGAR RADAR PRO
             </a>
@@ -121,7 +118,6 @@ campoBusca.addEventListener('input', (e) => {
     }, 800);
 });
 
-// A busca de produtos usa o Proxy para burlar a segurança do navegador
 async function executarBusca(query, token) {
     try {
         const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(query)}&limit=12`;
@@ -146,7 +142,7 @@ async function executarBusca(query, token) {
         dados.results.forEach(item => {
             const preco = item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             container.innerHTML += `
-                <div class="card-oferta">
+                <div class="card-oferta" style="position:relative;">
                     <span class="badge-meli" style="background:#ffe600; color:black; padding:2px 6px; font-size:0.7rem; font-weight:bold; border-radius:4px; position:absolute; top:10px; left:10px;">M. Livre</span>
                     <img src="${item.thumbnail.replace('-I.jpg', '-O.jpg')}" class="foto-produto" style="width:100%; border-radius:8px;">
                     <div class="detalhes" style="margin-top:10px;">
@@ -178,3 +174,4 @@ if (code) {
             <p style="font-size: 0.8rem; color: #999; margin-top: 20px; cursor: pointer; text-decoration:underline;" onclick="localStorage.clear(); location.reload();">Desconectar / Resetar</p>
         </div>`;
 }
+
